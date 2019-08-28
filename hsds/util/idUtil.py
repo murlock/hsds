@@ -162,7 +162,8 @@ def getS3Key(id):
                 index = id.index('_')  # will raise ValueError if not found
                 coord = id[index+1:]
                 key += '/'
-                key += coord  
+                # OpenIO: dispatch chunks in subdirectory
+                key += coord.replace('_', '/', 1)
             elif prefix == 'g':
                 # add key suffix for group
                 key += "/.group.json"
@@ -210,7 +211,7 @@ def getObjId(s3key):
             for ch in parts[3]:
                 if ch != '-':
                     token.append(ch)
-            
+
             if parts[2] == 'g' and parts[4] == ".group.json":
                 prefix = 'g'  # group json
             elif parts[2] == 't' and parts[4] == ".datatype.json":
@@ -224,9 +225,19 @@ def getObjId(s3key):
                     chunk_coord = "_" + parts[4]
             else:
                 raise ValueError(f"unexpected S3Key: {s3key}")
+
+        # OpenIO: allow use of keys in "subdirectory"
+        elif len(parts) == 6:
+            # group, dataset, or datatype or chunk
+            for ch in parts[3]:
+                if ch != '-':
+                    token.append(ch)
+            # chunk object
+            prefix = 'c'
+            chunk_coord = "_" + parts[4] + '_' + parts[5]
         else:
             raise ValueError(f"unexpected S3Key: {s3key}")
-        
+
         token = "".join(token)
         objid = prefix + '-' + token[0:8] + '-' + token[8:16] + '-' + token[16:20] + '-' + token[20:26] + '-' + token[26:32] + chunk_coord
     else:
